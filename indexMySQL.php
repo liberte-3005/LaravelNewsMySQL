@@ -1,71 +1,71 @@
 <?php
-
-$dsn = 'mysql:host=localhost;dbname=LaravelNews;charset=utf8';
-$user = 'root';
-$pass = 'root';
-
-//DB接続
-
-
-try {
-    $dbh = new PDO ($dsn, $user, $pass, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    ]);
-    //echo '接続成功';
-    //SQLの準備
-    $sql = 'SELECT * FROM article';
-    //SQLの実行
-    $stmt = $dbh->query($sql);
-    //SQLの結果を受け取る
-    $result = $stmt->fetchall(PDO::FETCH_ASSOC);
-    //var_dump($result);
-    $dbh = null;
-} catch(PODException $e) {
-    echo '接続に失敗しました'. $e->getMessage();
-    exit();
-};
-
-
-
-$title = ''; 
-$text = '';
-$id = uniqid(); //IDの自動生成
-$now_date = date("Y-m-d H:i:s");
-$DATA = []; //一回分の投稿情報
-$BOARD = []; //全ての投稿情報
-$error_message = [];
-
-//投稿部
-//クリックされたリクエストの判別、POSTメゾットは投稿されたという意
-if ($_SERVER ['REQUEST_METHOD'] === 'POST' ){
-
-    //titleとtxtの中身が入っているかを確認(empty(空)の!(否定))
-    if (!empty($_POST['title']) && !empty($_POST['txt'])){  
-
-        //テキストの代入
-        $title = $_POST['title'];
-        $text = $_POST['txt'];
-        //新規データ
-        $DATA = [ $id, $title, $text, $now_date];
-        $BOARD[] = $DATA;
-
-        //ファイルに保存する(FILEにBOARDの内容を上書きする)関数、決まりごと
-        file_put_contents($FILE, json_encode($BOARD, JSON_UNESCAPED_UNICODE));
-        header('Location:'.$_SERVER['SCRIPT_NAME']); 
-        exit;
+    $user = 'root';
+    $password = 'root';
+    $db = 'LaravelNews';
+    $host = 'localhost';
+    $port = 3306;
+    $link = mysqli_init();
+    $success = mysqli_real_connect(
+      $link,
+      $host,
+      $user,
+      $password,
+      $db,
+      $port
+    );
+   
+    $ArticleData = [];
+    $id = '';
+    $title = '';
+    $text = '';
+    
+    // MySQLからデータを取得
+    $query = "SELECT * FROM `article`";
+    if($success) {
+        $result = mysqli_query($link, $query);
+        while($row = mysqli_fetch_array($result)){
+            $ArticleData[] = [$row['id'],$row['title'],$row['text']];
+        }
     }
-}
 
-//エラーメッセージを表示する
-if(empty($_POST['title'])){
-    $error_message[] = 'タイトルは必須です。';}
-if(empty($_POST['txt'])){
-    $error_message[] = '記事は必須です。';}
-if(strlen($_POST['title']) > 30){
-    $error_message[] = 'タイトルは30字以内で入力してください。';}
+    $title = $_POST['title'];
+    $text = $_POST['text'];
+    $id = uniqid(); //IDの自動生成
+    $DATA = []; //一回分の投稿情報
+    $BOARD = []; //全ての投稿情報
+    $error_message = [];
 
+    //投稿部
+    //クリックされたリクエストの判別
+    if ($_SERVER ['REQUEST_METHOD'] === 'POST' ){
+        //titleとtxtの中身が入っているかを確認(empty(空)の!(否定))
+        if (!empty($_POST['title']) && !empty($_POST['text'])){  
+            //新規データ
+            $DATA = [$id,$title,$text];
+            $BOARD[] = $DATA;
+            if (!empty($_POST['title'])) {
+                //記事追加用のQueryを書く
+                $insert_query = "INSERT INTO `article`(`id`,`title`, `text`) VALUES ('{$id}','{$title}','{$text}')";
+                mysqli_query($link, $insert_query);
+                header('Location: ' . $_SERVER['SCRIPT_NAME']);
+                exit; 
+            } else if(isset($_POST['del'])) {
+                //削除ボタンを押したときの処理を書く。
+                $delete_query = "DELETE FROM `article` WHERE `id` = '{$_POST['del']}'";
+                mysqli_query($link, $delete_query);
+                header('Location: ' . $_SERVER['SCRIPT_NAME']);
+                exit;
+            //エラーメッセージを表示する
+            } else if(empty($_POST['title'])){
+                    $error_message[] = 'タイトルは必須です。';}
+                    if(empty($_POST['text'])){
+                    $error_message[] = '記事は必須です。';}
+                    if(strlen($_POST['title']) > 30){
+                    $error_message[] = 'タイトルは30字以内で入力してください。';}
+        }
+    }
 
-?>
+                ?>
 
 <!DOCTYPE html>
 <head>
@@ -89,14 +89,14 @@ if(strlen($_POST['title']) > 30){
     <?php endif; ?>
 <!--ErrorMessageEnd-->
 <!--PostStart-->
-     <form method="POST" class="form" onsubmit="return confirm('投稿してよろしいですか？')">
+     <form method="POST" class="form" onSubmit="return checkArticle()">
             <div class='titleContainer'>
                 <lavel class='nameFlex'>タイトル：</lavel>
                 <input type='text' name='title' class="inputFlex" placeholder="入力してください※30字以内">
             </div>
             <div class='articleContainer'>
                 <lavel class='nameFlex'>記事：</lavel>
-                <textarea name="txt" cols="50" rows="10" class="inputFlexArticle" placeholder="入力してください"></textarea>
+                <textarea name="text" cols="50" rows="10" class="inputFlexArticle" placeholder="入力してください"></textarea>
             </div>
             <div class="submitContainer">
                 <input type="submit" value="投稿" class="submitStyle">
@@ -106,11 +106,12 @@ if(strlen($_POST['title']) > 30){
 <hr>
 <!--ContentStart-->
     <div class="postsContainer">
-        <?php foreach (array_reverse ($result) as $ARTICLE) : ?>
+        <?php foreach (array_reverse ($ArticleData) as $ARTICLE) : ?>
             <div class="post">
-                <p class="articleTitle"><?php echo $ARTICLE['title']; ?></p>
-                <p class="articleText"><?php echo $ARTICLE['text']; ?></p>
-                <a class="postPage" href="http://localhost/text.php?id=<?php echo $ARTICLE[0] ?>">コメントを見る　</a>
+                <p class="articleTitle"><?php echo $ARTICLE[1]; ?></p>
+                <p class="articleText"><?php echo $ARTICLE[2]; ?></p>
+                <input type= "hidden" name= "del" value= "<?php echo $ARTICLE[0]; ?>">
+                <input type="submit" value="記事を削除する" class="deleteArticle" >
             </div> <hr>
         <?php endforeach; ?>
     </div>

@@ -1,32 +1,47 @@
 <?php
+    $user = 'root';
+    $password = 'root';
+    $db = 'LaravelNews'; //各々で作ったDBの名前をここに入れる
+    $host = 'localhost';
+    $port = 3306;
+    $link = mysqli_init();
+    $success = mysqli_real_connect(
+      $link,
+      $host,
+      $user,
+      $password,
+      $db,
+      $port
+    );
+   
+    $CommentData = [];
+    $comment_id = '';
+    $id = '';
+    $comment_text = '';
+    
+    // MySQLからデータを取得
+    $query = "SELECT * FROM `comment`";
+    if($success) {
+        $result = mysqli_query($link, $query);
+        while($row = mysqli_fetch_array($result)){
+            $ArticleData[] = [$row['comment_id'],$row['id'],$row['comment_text']];
+        }
+    }
 
-
-//var_dump($_); 
-
-
+    $title = $_POST['title'];
+    $text = $_POST['text'];
+    $id = uniqid(); //IDの自動生成
+    $DATA = []; //一回分の投稿情報
+    $BOARD = []; //全ての投稿情報
+    $error_message = [];
 
 
 $id = $_GET['id'];
-$FILE = './article.txt';
-$file = json_decode(file_get_contents($FILE));
-$page_data = [];
-
-
-$COMMENT_DATA = './comments.txt';
-$comment_data = json_decode(file_get_contents($COMMENT_DATA));
-$comment_box = []; 
 $text = '';
 $DATA = []; 
 $COMMENT_BOX = []; 
 $commentId = uniqid(); 
 $error_message = [];
-
-//indexを取得
-foreach ($file as $index => list($ID)){
-    if ($ID == $id){
-        $page_data = $file[$index];
-    }
-}
 
 //コメントを取得
 foreach ($comment_data as $index => list($key, $comment_id)){
@@ -53,10 +68,10 @@ if ($_SERVER ['REQUEST_METHOD'] === 'POST' ){
         $DATA = [ $commentId, $id, $text];
         $comment_box[] = $DATA;
 
-        //ファイルに保存する(FILEにBOARDの内容を上書きする)関数、決まりごと
-        file_put_contents($COMMENT_DATA, json_encode($comment_box, JSON_UNESCAPED_UNICODE));
-        header('Location:'.$_SERVER['REQUEST_URI']); 
-        exit;
+                //コメント追加用のQueryを書く
+                $insert_query = "INSERT INTO `comment`(`id`,`title`, `text`) VALUES ('{$id}','{$title}','{$text}')";
+                mysqli_query($link, $insert_query);
+                header('Location: ' . $_SERVER['SCRIPT_NAME']);
     }
   }
 }
@@ -111,6 +126,7 @@ if ($_SERVER ['REQUEST_METHOD'] === 'POST' ){
         <?php foreach ((array) $COMMENT_BOX as $DATA) : ?>
             <div class="commentContent">
                 <p><?php echo $DATA[2]; ?></p>
+                <p><input type="submit" value="削除" class="deleteComment"></p>
             </div> 
         <?php endforeach; ?>
     </div>
@@ -120,21 +136,3 @@ if ($_SERVER ['REQUEST_METHOD'] === 'POST' ){
 
 </body>
 </html>
-
-
-
-
-//データの取得
-function getAllArticleData() {
-    $dbh = dbConnect();
-    //SQLの準備
-    $sql = 'SELECT * FROM article';
-    //SQLの実行
-    $stmt = $dbh->query($sql);
-    //SQLの結果を受け取る
-    $result = $stmt->fetchall(PDO::FETCH_ASSOC);
-    return $result;
-    $dbh = null;
-}
-//取得したデータを表示
-$ArticleData = getAllArticleData();
