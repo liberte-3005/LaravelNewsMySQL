@@ -39,33 +39,36 @@
     //クリックされたリクエストの判別
     if ($_SERVER ['REQUEST_METHOD'] === 'POST' ){
         //titleとtxtの中身が入っているかを確認(empty(空)の!(否定))
-        if (!empty($_POST['title']) && !empty($_POST['text'])){  
+        if (!empty($_POST['title']) && !empty($_POST['text'])){
+
             //新規データ
             $DATA = [$id,$title,$text];
             $BOARD[] = $DATA;
-            if (!empty($_POST['title'])) {
-                //記事追加用のQueryを書く
-                $insert_query = "INSERT INTO `article`(`id`,`title`, `text`) VALUES ('{$id}','{$title}','{$text}')";
-                mysqli_query($link, $insert_query);
-                header('Location: ' . $_SERVER['SCRIPT_NAME']);
-                exit; 
-            } else if(isset($_POST['del'])) {
-                //削除ボタンを押したときの処理を書く。
-                $delete_query = "DELETE FROM `article` WHERE `id` = '{$_POST['del']}'";
-                mysqli_query($link, $delete_query);
-                header('Location: ' . $_SERVER['SCRIPT_NAME']);
-                exit;
+
+            //記事追加用のQueryを書く
+            $insert_query = "INSERT INTO `article`(`id`,`title`, `text`) VALUES ('{$id}','{$title}','{$text}')";
+            mysqli_query($link, $insert_query);
+            header('Location: ' . $_SERVER['SCRIPT_NAME']);
+            exit; 
+
             //エラーメッセージを表示する
-            } else if(empty($_POST['title'])){
-                    $error_message[] = 'タイトルは必須です。';}
-                    if(empty($_POST['text'])){
-                    $error_message[] = '記事は必須です。';}
-                    if(strlen($_POST['title']) > 30){
-                    $error_message[] = 'タイトルは30字以内で入力してください。';}
+            }else{
+                if(empty($_POST['title']))$error_message[] = 'タイトルは必須です。';
+                if(empty($_POST['text']))$error_message[] = '記事は必須です。';
+            }
         }
+        if(strlen($_POST['title']) > 30){
+        $error_message[] = 'タイトルは30字以内で入力してください。';
+    }
+    if(isset($_POST['del'])) {
+        //削除ボタンを押したときの処理を書く。
+        $delete_query = "DELETE FROM `article` WHERE `id` = '{$_POST['del']}'";
+        mysqli_query($link, $delete_query);
+        header('Location: ' . $_SERVER['SCRIPT_NAME']);
+        exit;
     }
 
-                ?>
+?>
 
 <!DOCTYPE html>
 <head>
@@ -89,7 +92,7 @@
     <?php endif; ?>
 <!--ErrorMessageEnd-->
 <!--PostStart-->
-     <form method="POST" class="form" onSubmit="return checkArticle()">
+     <form method="POST" class="newForm" onSubmit="return checkArticle()">
             <div class='titleContainer'>
                 <lavel class='nameFlex'>タイトル：</lavel>
                 <input type='text' name='title' class="inputFlex" placeholder="入力してください※30字以内">
@@ -110,8 +113,10 @@
             <div class="post">
                 <p class="articleTitle"><?php echo $ARTICLE[1]; ?></p>
                 <p class="articleText"><?php echo $ARTICLE[2]; ?></p>
-                <input type= "hidden" name= "del" value= "<?php echo $ARTICLE[0]; ?>">
-                <input type="submit" value="記事を削除する" class="deleteArticle" >
+                <form method="POST" class="delForm" onSubmit="return checkDelete()">
+                    <input type= "hidden" name= "del" value= "<?php echo $ARTICLE[0]; ?>">
+                    <input type="submit" value="記事を削除する" class="deleteArticle" >
+                </form>
             </div> <hr>
         <?php endforeach; ?>
     </div>
