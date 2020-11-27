@@ -18,6 +18,11 @@
     $id = '';
     $title = '';
     $text = '';
+
+    //エスケープ処理(echoするところにh())
+    function h($s) {
+        return htmlspecialchars($s, ENT_QUOTES, "UTF-8");
+        }
     
     // MySQLからデータを取得
     $query = "SELECT * FROM `article`";
@@ -78,7 +83,7 @@
 </head>
 <body>
     <nav class="navHead">
-        <a class="mainTitle" href="/">Laravel News</a>
+        <a class="mainTitle" href="http://localhost/indexMySQL.php">Laravel News</a>
     </nav>
 <section>
     <h2>さぁ、最新のニュースをシェアしましょう</h2>
@@ -86,7 +91,7 @@
     <?php if( !empty($error_message) ): ?>
 	    <ul class="error_message">
 		    <?php foreach( $error_message as $value ): ?>
-			    <li><?php echo $value; ?></li>
+			    <li><?php echo h($value); ?></li>
 		    <?php endforeach; ?>
 	    </ul>
     <?php endif; ?>
@@ -111,8 +116,9 @@
     <div class="postsContainer">
         <?php foreach (array_reverse ($ArticleData) as $ARTICLE) : ?>
             <div class="post">
-                <p class="articleTitle"><?php echo $ARTICLE[1]; ?></p>
-                <p class="articleText"><?php echo $ARTICLE[2]; ?></p>
+                <p class="articleTitle"><?php echo h($ARTICLE[1]); ?></p>
+                <p class="articleText"><?php echo h($ARTICLE[2]); ?></p>
+                <p class="postPage"><a href="http://localhost/textMySQL.php?id=<?php echo $ARTICLE[0] ?>">コメントを見る</a></p>
                 <form method="POST" class="delForm" onSubmit="return checkDelete()">
                     <input type= "hidden" name= "del" value= "<?php echo $ARTICLE[0]; ?>">
                     <input type="submit" value="記事を削除する" class="deleteArticle" >

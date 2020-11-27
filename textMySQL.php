@@ -1,81 +1,82 @@
 <?php
     $user = 'root';
     $password = 'root';
-    $db = 'LaravelNews'; //各々で作ったDBの名前をここに入れる
+    $db = 'LaravelNews';
     $host = 'localhost';
     $port = 3306;
     $link = mysqli_init();
     $success = mysqli_real_connect(
-      $link,
-      $host,
-      $user,
-      $password,
-      $db,
-      $port
+    $link,
+    $host,
+    $user,
+    $password,
+    $db,
+    $port
     );
-   
-    $CommentData = [];
-    $comment_id = '';
-    $id = '';
-    $comment_text = '';
-    
-    // MySQLからデータを取得
+
+    //エスケープ処理(echoするところにh())
+    function h($s) {
+        return htmlspecialchars($s, ENT_QUOTES, "UTF-8");
+        }
+
+    // MySQLからデータを取得記事
+    $id = $_GET['id'];
+    $ArticleData = [];
+
+    $query = "SELECT * FROM `article`";
+    if($success) {
+        $result = mysqli_query($link, $query);
+        while($row = mysqli_fetch_array($result)){
+            $ArticleData[] = [$row['id'],$row['title'],$row['text']];
+        }
+    }
+
+
+    // MySQLからデータを取得コメント
+    $Text = $_POST['Text'];
+    $DATA = []; 
+    $CommentData = []; 
+    $commentId = uniqid(); 
+    $error_message = [];
+    $CommentBord = [];
+
     $query = "SELECT * FROM `comment`";
     if($success) {
         $result = mysqli_query($link, $query);
         while($row = mysqli_fetch_array($result)){
-            $ArticleData[] = [$row['comment_id'],$row['id'],$row['comment_text']];
+            $CommentData[] = [$row['comment_id'],$row['id'],$row['comment_text']];
         }
     }
 
-    $title = $_POST['title'];
-    $text = $_POST['text'];
-    $id = uniqid(); //IDの自動生成
-    $DATA = []; //一回分の投稿情報
-    $BOARD = []; //全ての投稿情報
-    $error_message = [];
+    //コメント部
+    //クリックされたリクエストの判別
+    if ($_SERVER ['REQUEST_METHOD'] === 'POST' ){
 
-
-$id = $_GET['id'];
-$text = '';
-$DATA = []; 
-$COMMENT_BOX = []; 
-$commentId = uniqid(); 
-$error_message = [];
-
-//コメントを取得
-foreach ($comment_data as $index => list($key, $comment_id)){
-$comment_box[] = $comment_data[$index];
-if ($comment_id == $id) {
-  $COMMENT_BOX[] = $comment_data[$index];
-}
-}
-
-
-
-//コメント部
-//クリックされたリクエストの判別
-if ($_SERVER ['REQUEST_METHOD'] === 'POST' ){
-
-    //titleとtxtの中身が入っているかを確認(empty(空)の!(否定))
-    if (!empty($_POST['txt'])){  
-        if(strlen($_POST['txt']) > 50){
-            $error_message[] = 'コメントは50字以内で入力してください。';
-        }else{
-        //テキストの代入
-        $text = $_POST['txt'];
-        //新規データ
-        $DATA = [ $commentId, $id, $text];
-        $comment_box[] = $DATA;
+        //titleとtxtの中身が入っているかを確認(empty(空)の!(否定))
+        if (!empty($_POST['Text'])){
+                //テキストの代入
+                $text = $_POST['Text'];
+                //新規データ
+                $DATA = [ $commentId, $id, $text];
+                $CommentData[] = $DATA;
 
                 //コメント追加用のQueryを書く
-                $insert_query = "INSERT INTO `comment`(`id`,`title`, `text`) VALUES ('{$id}','{$title}','{$text}')";
+                $insert_query = "INSERT INTO `comment`(`comment_id`,`id`, `comment_text`) VALUES ('{$commentId}','{$id}','{$Text}')";
                 mysqli_query($link, $insert_query);
-                header('Location: ' . $_SERVER['SCRIPT_NAME']);
+                header('Location: ' . $_SERVER['REQUEST_URI']);
+                exit; 
+                }
     }
-  }
-}
-
+    if(strlen($_POST['commentText']) > 50){
+        $error_message[] = 'コメントは50字以内で入力してください。';
+    }
+    if(isset($_POST['del'])) {
+        //削除ボタンを押したときの処理を書く。
+        $delete_query = "DELETE FROM `comment` WHERE `comment_id` = '{$_POST['del']}'";
+        mysqli_query($link, $delete_query);
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
 ?>
 
 <!DOCTYPE html>
@@ -88,47 +89,59 @@ if ($_SERVER ['REQUEST_METHOD'] === 'POST' ){
     
 
     <nav class="navHead">
-        <a class="title" href="/">Laravel News</a>
+        <a class="mainTitle" href="http://localhost/indexMySQL.php">Laravel News</a>
     </nav>
 
  <section>
  <!--ArticleStart-->
-    <div>
-        <h3><?php echo $page_data[1]; ?></h3>
-        <p><?php echo $page_data[2]; ?></P>
-    </div>
+    <?php foreach ($ArticleData as $data) {
+        if( $id === $data[0]){ ?>
+            <div>
+            <h3><?php echo h($data[1]); ?></h3>
+            <p><?php echo h($data[2]); ?></P>
+        </div>
+        <?php
+        }
+    } ?>
+
  <!--ArticleEnd-->
     
 <!--ErrorMessageStart-->
     <?php if( !empty($error_message) ): ?>
 	    <ul class="error_message">
-		    <?php foreach( $error_message as $value ): ?>
-			    <li><?php echo $value; ?></li>
+		    <?php foreach( $error_message as $ERROR ): ?>
+			    <li><?php echo $ERROR; ?></li>
 		    <?php endforeach; ?>
 	    </ul>
     <?php endif; ?>
-
 <!--ErrorMessageEnd-->
+<hr>
 <!--CommentPostStart-->
      <form method="POST" class="comment" >
             <div class='commentContainer'>
-                <textarea name="txt" class="commentBox" placeholder="入力してください"></textarea>
+                <textarea name="Text" class="commentBox" placeholder="入力してください"></textarea>
             </div>
             <div class="commentButton">
-                <input type="submit" value="コメントを書く" class="commentSubmitStyle" name="<?php echo $id ?>">
+                <input type="submit" value="コメントを書く" class="commentSubmitStyle"　onSubmit="return checkArticle()" name="<?php echo $id ?>">
             </div>
     </form>
 
 <!--CommentPostEnd-->
-<hr>
+
 <!--ContentStart-->
     <div class="postsContainer">
-        <?php foreach ((array) $COMMENT_BOX as $DATA) : ?>
+        <?php foreach ($CommentData as $array) {
+            if( $id === $array[1]){ ?>
             <div class="commentContent">
-                <p><?php echo $DATA[2]; ?></p>
-                <p><input type="submit" value="削除" class="deleteComment"></p>
+                <p><?php echo h($array[2]); ?></p>
+                <form method="POST" class="delForm" onSubmit="return checkDelete()">
+                    <input type= "hidden" name= "del" value= "<?php echo $array[0]; ?>">
+                    <input type="submit" value="記事を削除する" class="deleteArticle" >
+                </form>
             </div> 
-        <?php endforeach; ?>
+        <?php }
+        }
+        ?>
     </div>
 <!--ContentStartEnd-->
 </section>
